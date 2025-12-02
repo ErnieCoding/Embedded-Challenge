@@ -26,12 +26,10 @@ public:
 private:
     I2C &_i2c;
     
-    // Helper functions for register access
     bool writeReg(uint8_t reg, uint8_t val);
     bool readReg(uint8_t reg, uint8_t &val);
     bool readInt16(uint8_t reg_low, int16_t &val);
     
-    // Sensitivity factors for ±2g and ±250dps
     static constexpr float ACCEL_SENSITIVITY = 0.061f;  // mg/LSB
     static constexpr float GYRO_SENSITIVITY = 8.75f;    // mdps/LSB
 };
