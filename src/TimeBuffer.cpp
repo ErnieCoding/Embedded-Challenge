@@ -1,4 +1,6 @@
 #include "TimeBuffer.h"
+#include <cstring>
+#include <cmath>
 
 TimeBuffer::TimeBuffer() : index(0) {
     memset(data, 0, sizeof(data));
@@ -18,12 +20,18 @@ void TimeBuffer::reset() {
     index = 0;
 }
 
-void TimeBuffer::getFFTInput(float *out) {
-    // copy collected samples
+int TimeBuffer::getCount() const {
+    return index;
+}
+
+void TimeBuffer::getFFTInput(float *out) const {
     for (int i = 0; i < RAW_SAMPLES; i++)
         out[i] = data[i];
-
-    // zero pad remaining FFT slots
+    
     for (int i = RAW_SAMPLES; i < FFT_SIZE; i++)
         out[i] = 0.0f;
+}
+
+float TimeBuffer::getFrequencyResolution() const {
+    return (float)SAMPLE_RATE / (float)FFT_SIZE;
 }
