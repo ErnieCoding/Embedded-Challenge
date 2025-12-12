@@ -6,7 +6,7 @@ class TimeBuffer {
 public:
     static constexpr int SAMPLE_RATE = 52;
     static constexpr int DURATION_SEC = 3;
-    static constexpr int RAW_SAMPLES = SAMPLE_RATE * DURATION_SEC;  // 156
+    static constexpr int RAW_SAMPLES = SAMPLE_RATE * DURATION_SEC;  // 156 samples in total in a 3 second interval
     static constexpr int FFT_SIZE = 256;
 
     TimeBuffer();
