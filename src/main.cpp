@@ -42,7 +42,6 @@ int main() {
     uint32_t sampleCount = 0;
     
     while (true) {
-        printf("\n\n[DEBUG] Reached the WHILE LOOP\n\n");
         float ax, ay, az, gx, gy, gz;
         sensors.readAccel(ax, ay, az);
         sensors.readGyro(gx, gy, gz);
@@ -63,8 +62,11 @@ int main() {
         //         blinkTimer.reset();
         //     }
         // }
-        
-        //float acc_z_centered = az - 1.0f;
+
+        printf("\n\n\n===============================\n\n");
+        printf(">Raw_Acc: [%.2f]  [%.2f]  [%.2f]\n", ax, ay, az);
+        printf(">Raw_Gyro: [%.2f]  [%.2f]  [%.2f]\n\n", gx, gy, gz);
+        printf("---");
 
         float acc_mag  = sqrtf(ax*ax + ay*ay + az*az);
         float gyro_mag = sqrtf(gx*gx + gy*gy + gz*gz);
@@ -72,20 +74,21 @@ int main() {
         acc_buffer.addSample(acc_mag);
         gyro_buffer.addSample(gyro_mag);
 
-        if (acc_buffer.isFull()) { acc_buffer.process(); acc_buffer.reset(); }
-        if (gyro_buffer.isFull()) { gyro_buffer.process(); gyro_buffer.reset(); }
+        if (acc_buffer.isFull() && gyro_buffer.isFull()){
+            // Processing accelerometer data
+            acc_buffer.process();
+            // Processing gyroscope data
+            gyro_buffer.process();
 
-        printf("\n\n\n===============================\n\n");
-        printf(">Raw_Acc: [%.2f]  [%.2f]  [%.2f]\n", ax, ay, az);
-        printf(">Raw_Gyro: [%.2f]  [%.2f]  [%.2f]\n\n", gx, gy, gz);
+            printf(">ACC_DOM_Freq_MAG: [%.2f]\n", acc_buffer.dominantMag);
+            printf(">ACC_DOM_Freq_Hz: [%.2f]\n\n", acc_buffer.dominantHz);
 
-        printf("---");
+            printf(">GYRO_DOM_Freq_MAG: [%.2f]\n", gyro_buffer.dominantMag);
+            printf(">GYRO_DOM_Freq_Hz: [%.2f]\n\n", gyro_buffer.dominantHz);
 
-        printf(">ACC_DOM_Freq_MAG: [%.2f]\n", acc_buffer.dominantMag);
-        printf(">ACC_DOM_Freq_Hz: [%.2f]\n\n", acc_buffer.dominantHz);
-
-        printf(">GYRO_DOM_Freq_MAG: [%.2f]\n", gyro_buffer.dominantMag);
-        printf(">GYRO_DOM_Freq_Hz: [%.2f]\n\n", gyro_buffer.dominantHz);
+            acc_buffer.reset();
+            gyro_buffer.reset();
+        }
 
         printf("===============================\n\n\n");
 

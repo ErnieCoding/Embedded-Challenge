@@ -24,7 +24,7 @@ void FFTBuffer::reset() {
     memset(mag, 0, sizeof(mag));
 
     dominantHz = 0.0f;
-    dominantHz = 0.0f;
+    dominantMag = 0.0f;
 }
 
 void FFTBuffer::process() {
