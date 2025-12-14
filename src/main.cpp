@@ -18,8 +18,10 @@ FFTBuffer acc_buffer;
 FFTBuffer gyro_buffer;
 TremorDetector tremorDetector;
 FOGDetector fogDetector;
+BLEManager bleManager;
 
 int main() {
+    bleManager.init();
     ThisThread::sleep_for(5000ms); // 5 sec delay to open serial monitor
     
     printf("Main thread stack size: %lu bytes\n", osThreadGetStackSize(osThreadGetId()));
@@ -87,11 +89,12 @@ int main() {
             printf("ACC: dom %.2f Hz mag %.2f | GYRO: dom %.2f Hz mag %.2f\n", acc_buffer.dominantHz, acc_buffer.dominantMag, gyro_buffer.dominantHz, gyro_buffer.dominantMag);
             // --- Tremor detection (use gyro FFT) ---
             uint8_t tremor = tremorDetector.detect(gyro_buffer); // 0 or 1
+            bleManager.updateTremor(tremor);
             if (tremor) {
                 printf(">>> TREMOR DETECTED <<<\n");
             }
             uint8_t fog = fogDetector.detect(acc_buffer.dominantHz, acc_buffer.dominantMag);// FOG Detection
-
+            bleManager.updateFOG(fog);
             if (fog) {
             printf(">>> FOG DETECTED <<<\n");
             }
