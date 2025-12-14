@@ -1,6 +1,7 @@
 #include "mbed.h"
 #include "SensorManager.h"
 #include "FFTBuffer.h"
+#include "FOGDetector.h"
 
 I2C i2c(PB_11, PB_10);
 DigitalOut led(LED2);
