@@ -13,24 +13,28 @@ public:
     static constexpr float BIN_HZ = (float)SAMPLE_RATE / (float)FFT_SIZE;
 
     FFTBuffer();
+
+    void init();
     
     bool addSample(float value);
     bool isFull() const;
     void reset();
-    
     void process();
 
     float mag[FFT_SIZE/2]; // Nyquist sampling
     float dominantHz = 0.0f;
     float dominantMag = 0.0f;
 
-    static int hzToBin(float hz) {return (int)lroundf(hz / BIN_HZ);}
+    static int hzToBin(float hz) {
+        return (int)lroundf(hz / BIN_HZ);
+    }
 
 private:
     int index = 0;
     float fftInput[FFT_SIZE];
     float fftOutput[FFT_SIZE];
     arm_rfft_fast_instance_f32 rfft;
+    bool initalized = false;
 
     void computeDominantInRange(float fLow, float fHigh);
 };

@@ -1,10 +1,19 @@
 #include "FFTBuffer.h"
 #include <cmath>
+#include "mbed.h"
 
 
 FFTBuffer::FFTBuffer() {
-    arm_rfft_fast_init_f32(&rfft, FFT_SIZE);
+    memset(&rfft, 0, sizeof(rfft));
     reset();
+}
+
+void FFTBuffer::init(){
+    if (initalized) return;
+
+    arm_status st = arm_rfft_fast_init_f32(&rfft, FFT_SIZE);
+    MBED_ASSERT(st == ARM_MATH_SUCCESS);
+    initalized = true;
 }
 
 bool FFTBuffer::addSample(float value) {
@@ -28,22 +37,19 @@ void FFTBuffer::reset() {
 }
 
 void FFTBuffer::process() {
-    for (int i = RAW_SAMPLES; i < FFT_SIZE; i++) fftInput[i] = 0.0f; // zero-pad the rest of the samples [156:]
-
     float mean = 0.0f;
     for (int i = 0; i < RAW_SAMPLES; i++) mean += fftInput[i];
     mean /= (float)RAW_SAMPLES;
 
-    // Hann windowing for the first 156 samples
-    constexpr float TWO_PI = 6.28318530718f;
-    for (int n = 0; n < RAW_SAMPLES; n++) {
-        float w = 0.5f * (1.0f - cosf(TWO_PI * n / (RAW_SAMPLES - 1)));
-        fftInput[n] = (fftInput[n] - mean) * w;
+    for (int i = 0; i < RAW_SAMPLES; i++) {
+        fftInput[i] -= mean;
     }
+
+    for (int i = RAW_SAMPLES; i < FFT_SIZE; i++) fftInput[i] = 0.0f; // zero-pad the rest of the samples [156:]
 
     arm_rfft_fast_f32(&rfft, fftInput, fftOutput, 0);
 
-    mag[0] = fabsf(fftOutput[0]);
+    mag[0] = 0.0f;
     arm_cmplx_mag_f32(&fftOutput[2], &mag[1], (FFT_SIZE/2 - 1));
 
     computeDominantInRange(0.5f, 12.0f);

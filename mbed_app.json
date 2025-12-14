@@ -1,10 +1,9 @@
 {
     "target_overrides":{
         "*": {
-            "target.printf_lib": "minimal-printf",
             "platform.minimal-printf-enable-floating-point": true,
-            "platform.minimal-printf-set-floating-point-max-decimals": 2,
-            "rtos.main-thread-stack-size": 8192
+            "rtos.main-thread-stack-size": 8192,
+            "platform.default-serial-baud-rate": 115200
         }
     }
 }
