@@ -18,6 +18,8 @@ FFTBuffer gyro_buffer;
 int main() {
     ThisThread::sleep_for(5000ms); // 5 sec delay to open serial monitor
     
+    printf("Main thread stack size: %lu bytes\n", osThreadGetStackSize(osThreadGetId()));
+
     // Set I2C to 400kHz
     i2c.frequency(400000);
     
