@@ -91,3 +91,21 @@ void BLEManager::onInitComplete(
 
     printf("BLE advertising started\n");
 }
+void BLEManager::updateFOG(uint8_t score) {
+    _fog = score;   // 保存值
+    if (_fogChar) {
+        _ble.gattServer().write(_fogChar->getValueHandle(), &_fog, 1);
+    }
+}
+void BLEManager::updateTremor(uint8_t score) {
+    _tremor = score;
+    if (_tremorChar) {
+        _ble.gattServer().write(_tremorChar->getValueHandle(), &_tremor, 1);
+    }
+}
+void BLEManager::updateDyskinesia(uint8_t score) {
+    _dyskinesia = score;
+    if (_dyskinesiaChar) {
+        _ble.gattServer().write(_dyskinesiaChar->getValueHandle(), &_dyskinesia, 1);
+    }
+}
