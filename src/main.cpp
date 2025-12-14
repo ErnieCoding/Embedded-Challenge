@@ -1,5 +1,6 @@
 #include "mbed.h"
 #include "SensorManager.h"
+#include "FFTBuffer.h"
 
 I2C i2c(PB_11, PB_10);
 DigitalOut led(LED2);
@@ -11,15 +12,10 @@ FileHandle *mbed::mbed_override_console(int fd) {
 }
 
 SensorManager sensors(i2c);
+FFTBuffer fft_buffer;
 
 int main() {
     ThisThread::sleep_for(5000ms); // 5 sec delay to open serial monitor
-
-    printf("\n\n\n");
-    printf("=== Motion Sensor Demo ===\n");
-    printf("Project: Tremor Detection System\n");
-    printf("Sampling Rate: 52Hz\n\n");
-    fflush(stdout);
     
     // Set I2C to 400kHz
     i2c.frequency(400000);
@@ -51,34 +47,51 @@ int main() {
         
         float intensity = sensors.computeMotionIntensity(ax, ay, az, gx, gy, gz);
         
-        if (intensity < 0.5f) { // threshold for no motion
-            led = 0;
-            blinkTimer.reset();
-        } else {
-            float clamped = intensity;
-            if (clamped > 5.0f) clamped = 5.0f; // max blink rate
-            blinkInterval = 0.5f / clamped;
+        // LED INTENSITY BLINKING - CAN USE FOR TEST
+        // if (intensity < 0.5f) { // threshold for no motion
+        //     led = 0;
+        //     blinkTimer.reset();
+        // } else {
+        //     float clamped = intensity;
+        //     if (clamped > 5.0f) clamped = 5.0f; // max blink rate
+        //     blinkInterval = 0.5f / clamped;
 
-            if (blinkTimer.elapsed_time().count() / 1e6f > blinkInterval) {
-                led = !led;
-                blinkTimer.reset();
-            }
-        }
+        //     if (blinkTimer.elapsed_time().count() / 1e6f > blinkInterval) {
+        //         led = !led;
+        //         blinkTimer.reset();
+        //     }
+        // }
         
-        if (sampleCount % 10 == 0) {
-            printf("ACC[g]: %.3f %.3f %.3f | GYRO[dps]: %.3f %.3f %.3f | I: %.3f\n", ax, ay, az, gx, gy, gz, intensity);
+        float acc_z_centered = az - 1.0f;
 
-            if (intensity < 0.5f) {
-                printf("\n[STILL]\n");
-            } else {
-                printf("\n[MOTION!]\n");
-            }
-
-            fflush(stdout);
+        for (int i = 0; i < FFTBuffer::RAW_SAMPLES; i++){
+            fft_buffer.addSample(ax);
+            fft_buffer.addSample(ay);
+            fft_buffer.addSample(az);
         }
+
+        if (fft_buffer.isFull()){
+            // Compute frequencies & Magnitude
+            fft_buffer.computeFFT(fft_buffer.S, fft_buffer.fft_input, fft_buffer.fft_output, 0);
+            fft_buffer.computeMagtd(fft_buffer.fft_output, fft_buffer.fft_mag, fft_buffer.FFT_SIZE/2);
+
+            // Find dominant frequency
+            fft_buffer.findDominantFreq(fft_buffer.fft_mag);
+
+            fft_buffer.reset();
+        }
+
+        printf("\n\n\n===============================\n");
+        printf(">Raw_Acc: %.2f  %.2f  %.2f\n", ax, ay, az);
+        printf(">Raw_Gyro: %.2f  %.2f  %.2f\n\n", gx, gy, gz);
+
+        printf(">Freq_Hz: %.2f\n", fft_buffer.current_dominant_freq);
+
         
         sampleCount++;
-        thread_sleep_for(19);
+
+        // 52 Hz = approx 19ms period
+        ThisThread::sleep_for(19ms);
     }
 }
 

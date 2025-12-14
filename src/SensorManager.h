@@ -20,8 +20,7 @@ public:
     void readGyro(float &gx, float &gy, float &gz);
     void readGyroRaw(int16_t &gx, int16_t &gy, int16_t &gz);
     
-    float computeMotionIntensity(float ax, float ay, float az,
-                                 float gx, float gy, float gz);
+    float computeMotionIntensity(float ax, float ay, float az, float gx, float gy, float gz);
 
 private:
     I2C &_i2c;

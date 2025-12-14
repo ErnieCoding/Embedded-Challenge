@@ -26,7 +26,7 @@ bool SensorManager::readInt16(uint8_t reg_low, int16_t &val) {
 bool SensorManager::init() {
     uint8_t who;
     
-    // Verify sensor is connected
+    // Verify sensor connection
     if (!readReg(WHO_AM_I, who) || who != 0x6A) {
         printf("ERROR: LSM6DSL sensor not found (WHO_AM_I = 0x%02X)\n", who);
         return false;
