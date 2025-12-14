@@ -6,13 +6,14 @@ I2C i2c(PB_11, PB_10);
 DigitalOut led(LED2);
 
 // Serial console setup
-static BufferedSerial serial_port(USBTX, USBRX, 115200);
+BufferedSerial serial_port(USBTX, USBRX, 115200);
 FileHandle *mbed::mbed_override_console(int fd) {
     return &serial_port;
 }
 
 SensorManager sensors(i2c);
-FFTBuffer fft_buffer;
+FFTBuffer acc_buffer;
+FFTBuffer gyro_buffer;
 
 int main() {
     ThisThread::sleep_for(5000ms); // 5 sec delay to open serial monitor
@@ -37,15 +38,16 @@ int main() {
     Timer blinkTimer;
     blinkTimer.start();
     
-    float blinkInterval = 0.5f;
+    //float blinkInterval = 0.5f;
     uint32_t sampleCount = 0;
     
     while (true) {
+        printf("\n\n[DEBUG] Reached the WHILE LOOP\n\n");
         float ax, ay, az, gx, gy, gz;
         sensors.readAccel(ax, ay, az);
         sensors.readGyro(gx, gy, gz);
         
-        float intensity = sensors.computeMotionIntensity(ax, ay, az, gx, gy, gz);
+        //float intensity = sensors.computeMotionIntensity(ax, ay, az, gx, gy, gz);
         
         // LED INTENSITY BLINKING - CAN USE FOR TEST
         // if (intensity < 0.5f) { // threshold for no motion
@@ -62,30 +64,32 @@ int main() {
         //     }
         // }
         
-        float acc_z_centered = az - 1.0f;
+        //float acc_z_centered = az - 1.0f;
 
-        for (int i = 0; i < FFTBuffer::RAW_SAMPLES; i++){
-            fft_buffer.addSample(ax);
-            fft_buffer.addSample(ay);
-            fft_buffer.addSample(az);
-        }
+        float acc_mag  = sqrtf(ax*ax + ay*ay + az*az);
+        float gyro_mag = sqrtf(gx*gx + gy*gy + gz*gz);
 
-        if (fft_buffer.isFull()){
-            // Compute frequencies & Magnitude
-            fft_buffer.computeFFT(fft_buffer.S, fft_buffer.fft_input, fft_buffer.fft_output, 0);
-            fft_buffer.computeMagtd(fft_buffer.fft_output, fft_buffer.fft_mag, fft_buffer.FFT_SIZE/2);
+        acc_buffer.addSample(acc_mag);
+        gyro_buffer.addSample(gyro_mag);
 
-            // Find dominant frequency
-            fft_buffer.findDominantFreq(fft_buffer.fft_mag);
+        if (acc_buffer.isFull()) { acc_buffer.process(); acc_buffer.reset(); }
+        if (gyro_buffer.isFull()) { gyro_buffer.process(); gyro_buffer.reset(); }
 
-            fft_buffer.reset();
-        }
+        printf("\n\n\n===============================\n\n");
+        printf(">Raw_Acc: [%.2f]  [%.2f]  [%.2f]\n", ax, ay, az);
+        printf(">Raw_Gyro: [%.2f]  [%.2f]  [%.2f]\n\n", gx, gy, gz);
 
-        printf("\n\n\n===============================\n");
-        printf(">Raw_Acc: %.2f  %.2f  %.2f\n", ax, ay, az);
-        printf(">Raw_Gyro: %.2f  %.2f  %.2f\n\n", gx, gy, gz);
+        printf("---");
 
-        printf(">Freq_Hz: %.2f\n", fft_buffer.current_dominant_freq);
+        printf(">ACC_DOM_Freq_MAG: [%.2f]\n", acc_buffer.dominantMag);
+        printf(">ACC_DOM_Freq_Hz: [%.2f]\n\n", acc_buffer.dominantHz);
+
+        printf(">GYRO_DOM_Freq_MAG: [%.2f]\n", gyro_buffer.dominantMag);
+        printf(">GYRO_DOM_Freq_Hz: [%.2f]\n\n", gyro_buffer.dominantHz);
+
+        printf("===============================\n\n\n");
+
+
 
         
         sampleCount++;
