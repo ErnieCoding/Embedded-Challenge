@@ -2,6 +2,7 @@
 #include "SensorManager.h"
 #include "FFTBuffer.h"
 #include "FOGDetector.h"
+#include "TremorDetector.h"
 
 I2C i2c(PB_11, PB_10);
 DigitalOut led(LED2);
@@ -15,6 +16,8 @@ FileHandle *mbed::mbed_override_console(int fd) {
 SensorManager sensors(i2c);
 FFTBuffer acc_buffer;
 FFTBuffer gyro_buffer;
+TremorDetector tremorDetector;
+FOGDetector fogDetector;
 
 int main() {
     ThisThread::sleep_for(5000ms); // 5 sec delay to open serial monitor
@@ -82,6 +85,11 @@ int main() {
             gyro_buffer.process();
 
             printf("ACC: dom %.2f Hz mag %.2f | GYRO: dom %.2f Hz mag %.2f\n", acc_buffer.dominantHz, acc_buffer.dominantMag, gyro_buffer.dominantHz, gyro_buffer.dominantMag);
+            // --- Tremor detection (use gyro FFT) ---
+            uint8_t tremor = tremorDetector.detect(gyro_buffer); // 0 or 1
+            if (tremor) {
+                printf(">>> TREMOR DETECTED <<<\n");
+            }
             uint8_t fog = fogDetector.detect(acc_buffer.dominantHz, acc_buffer.dominantMag);// FOG Detection
 
             if (fog) {
