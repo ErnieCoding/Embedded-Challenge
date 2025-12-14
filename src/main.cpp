@@ -81,7 +81,11 @@ int main() {
             gyro_buffer.process();
 
             printf("ACC: dom %.2f Hz mag %.2f | GYRO: dom %.2f Hz mag %.2f\n", acc_buffer.dominantHz, acc_buffer.dominantMag, gyro_buffer.dominantHz, gyro_buffer.dominantMag);
+            uint8_t fog = fogDetector.detect(acc_buffer.dominantHz, acc_buffer.dominantMag);
 
+            if (fog) {
+            printf(">>> FOG DETECTED <<<\n");
+            }
             acc_buffer.reset();
             gyro_buffer.reset();
         }
