@@ -3,6 +3,7 @@
 #include "FFTBuffer.h"
 #include "FOGDetector.h"
 #include "TremorDetector.h"
+#include "DyskinesiaDetection.h"
 
 I2C i2c(PB_11, PB_10);
 DigitalOut led(LED2);
@@ -19,6 +20,7 @@ FFTBuffer gyro_buffer;
 TremorDetector tremorDetector;
 FOGDetector fogDetector;
 BLEManager bleManager;
+DyskinesiaDetector dyskinesiaDetector;
 
 int main() {
     bleManager.init();
@@ -92,6 +94,12 @@ int main() {
             bleManager.updateTremor(tremor);
             if (tremor) {
                 printf(">>> TREMOR DETECTED <<<\n");
+            }
+            // --- Dyskinesia detection (use accel FFT) ---
+            uint8_t dysk = dyskinesiaDetector.detect(acc_buffer);
+            bleManager.updateDyskinesia(dysk);
+            if (dysk) {
+                printf(">>> DYSKINESIA DETECTED <<<\n");
             }
             uint8_t fog = fogDetector.detect(acc_buffer.dominantHz, acc_buffer.dominantMag);// FOG Detection
             bleManager.updateFOG(fog);
