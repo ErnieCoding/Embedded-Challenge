@@ -18,6 +18,8 @@ class TremorDetector {
         static constexpr int CONSECUTIVE_NEEDED = 2;
         static constexpr float REF_POWER_MIN = 1.0f;
         static constexpr float DOM_MAG_MIN   = 0.05f;
+        static constexpr float DOMINANCE_THRESHOLD = 0.6f;
+        static constexpr float TREMOR_POWER_MIN = 5.0f; 
         float bandPower(const FFTBuffer &fft, float fLow, float fHigh) const;
     };
     
