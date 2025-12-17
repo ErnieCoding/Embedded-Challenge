@@ -1,101 +1,59 @@
-#include "FFTBuffer.h"
-#include <cmath>
-#include "mbed.h"
+#include "FOGDetector.h"
 
+FOGDetector::FOGDetector()
+    : state(State::IDLE), freezeCount(0) {}
 
-FFTBuffer::FFTBuffer() {
-    memset(&rfft, 0, sizeof(rfft));
-    reset();
-}
+uint8_t FOGDetector::detect(float accHz,
+                            float accMag,
+                            float gyroHz,
+                            float gyroMag)
+{
+    // 1) 定义 WALKING：低频(走路频段) + accMag 足够大
+    bool walkingNow =
+        (accHz > 0.6f && accHz < WALK_HZ_MAX) &&
+        (accMag > ACC_MAG_MIN_FOR_WALK);
 
-void FFTBuffer::init(){
-    if (initalized) return;
+    // 2) 定义 FREEZE：accMag 很小 + gyroMag 很大 + accHz 非步态(偏高)
+    //    注意这里用 AND，不再是之前那个几乎恒真的 OR
+    bool freezeLike =
+        (accMag < ACC_MAG_MAX_FOR_FOG) &&
+        (gyroMag > GYRO_MAG_MIN_FOR_FOG);
 
-    arm_status st = arm_rfft_fast_init_f32(&rfft, FFT_SIZE);
-    MBED_ASSERT(st == ARM_MATH_SUCCESS);
-    initalized = true;
-}
+    uint8_t fog = 0;
 
-bool FFTBuffer::addSample(float x, float y, float z) {
-    if (index >= RAW_SAMPLES) return false;
-    fftInputX[index] = x;
-    fftInputY[index] = y;
-    fftInputZ[index] = z;
-    index++;
-    return true;
-}
-
-bool FFTBuffer::isFull() const {
-    return index >= RAW_SAMPLES;
-}
-
-void FFTBuffer::reset() {
-    // Reset literally everything
-    index = 0;
-    memset(fftInputX, 0, sizeof(fftInputX));
-    memset(fftInputY, 0, sizeof(fftInputX));
-    memset(fftInputZ, 0, sizeof(fftInputX));
-    memset(fftOutput, 0, sizeof(fftOutput));
-    memset(mag, 0, sizeof(mag));
-
-    dominantHz = 0.0f;
-    dominantMag = 0.0f;
-}
-
-void FFTBuffer::process() {
-    memset(mag, 0, sizeof(mag));
-
-    float* axisBuffers[3] = {fftInputX, fftInputY, fftInputZ};
-
-    for (int a = 0; a < 3; a++) {
-        float* currentInput = axisBuffers[a];
-
-        float mean = 0.0f;
-        for (int i = 0; i < RAW_SAMPLES; i++) mean += currentInput[i];
-        mean /= (float)RAW_SAMPLES;
-        for (int i = 0; i < RAW_SAMPLES; i++) currentInput[i] -= mean;
-
-        for (int i = 0; i < RAW_SAMPLES; i++) {
-            float hanning = 0.5f * (1.0f - cosf(2.0f * 3.14159f * i / (RAW_SAMPLES - 1)));
-            currentInput[i] *= hanning;
+    switch (state) {
+    case State::IDLE:
+        // 必须先进入 WALKING，后面才可能触发 FOG
+        if (walkingNow) {
+            state = State::WALKING;
+            freezeCount = 0;
         }
+        break;
 
-        // Zero Padding the rest of the FFTBuffer
-        static float tempFFTInput[FFT_SIZE];
-        memcpy(tempFFTInput, currentInput, sizeof(float) * RAW_SAMPLES);
-        for(int i = RAW_SAMPLES; i < FFT_SIZE; i++) tempFFTInput[i] = 0.0f;
-
-        arm_rfft_fast_f32(&rfft, tempFFTInput, fftOutput, 0);
-
-        // Accumulate Magnitude
-        static float tempMag[FFT_SIZE / 2];
-        arm_cmplx_mag_f32(fftOutput, tempMag, FFT_SIZE / 2);
-        
-        // Sum this axis's magnitude into the global mag buffer
-        for (int i = 0; i < FFT_SIZE / 2; i++) {
-            mag[i] += tempMag[i];
+    case State::WALKING:
+        if (freezeLike) {
+            freezeCount++;
+            if (freezeCount >= FREEZE_CONSECUTIVE_NEEDED) {
+                fog = 1;              // ★ 只在 WALKING->FREEZE 时触发一次
+                state = State::FREEZE;
+                freezeCount = 0;
+            }
+        } else {
+            freezeCount = 0;
+            // 仍在走就保持 WALKING；走没了回 IDLE
+            if (!walkingNow) state = State::IDLE;
         }
+        break;
+
+    case State::FREEZE:
+        // freeze 结束，重新走起来才回 WALKING
+        if (walkingNow) {
+            state = State::WALKING;
+            freezeCount = 0;
+        }
+        break;
     }
 
-    mag[0] = 0.0f;
-    computeDominantInRange(0.5f, 12.0f);
-}
-
-void FFTBuffer::computeDominantInRange(float fLow, float fHigh) {
-    int b0 = hzToBin(fLow);
-    int b1 = hzToBin(fHigh);
-    if (b0 < 1) b0 = 1;
-    if (b1 > (FFT_SIZE/2 - 1)) b1 = (FFT_SIZE/2 - 1);
-
-    float best = 0.0f;
-    int bestBin = 0;
-
-    for (int b = b0; b <= b1; b++) {
-        float v = mag[b];
-        if (v > best) { best = v; bestBin = b; }
-    }
-
-    dominantMag = best;
-    dominantHz  = bestBin * BIN_HZ;
+    return fog;
 }
 
