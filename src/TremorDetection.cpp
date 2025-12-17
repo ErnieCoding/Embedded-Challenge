@@ -1,9 +1,9 @@
 #include "TremorDetector.h"
 #include <cmath>
 
-TremorDetector::TremorDetector()
-    : tremorStreak(0)
-{}
+TremorDetector::TremorDetector(){
+    tremorStreak = 0;
+}
 
 
 float TremorDetector::bandPower(const FFTBuffer &fft, float fLow, float fHigh) const {
@@ -40,9 +40,6 @@ uint8_t TremorDetector::detectRaw(const FFTBuffer &fft) const {
     if (!peakInBand) return 0;
 
     // 2) tremor ratio score
-    float Pt = bandPower(fft, TREMOR_F_LO, TREMOR_F_HI);
-    
-
     float score = Pt / (Pr + 1e-9f);
 
     if (score < SCORE_THRESHOLD) return 0;

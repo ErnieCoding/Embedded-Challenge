@@ -4,6 +4,7 @@
 
 class DyskinesiaDetector {
 public:
+    int dyskinesiaStreak;
     DyskinesiaDetector();
 
     // stable decision (debounced)
@@ -11,8 +12,6 @@ public:
     uint8_t detectRaw(const FFTBuffer &fft) const;
 
 private:
-    int streak;
-
     // Frequency bands (Hz)
     static constexpr float MID_F_LO = 4.0f;  // dyskinesia often shows energy above tremor band
     static constexpr float MID_F_HI = 12.0f;

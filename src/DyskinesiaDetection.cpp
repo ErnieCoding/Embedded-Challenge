@@ -1,9 +1,8 @@
 #include "DyskinesiaDetection.h"
 #include <cmath>
 
-DyskinesiaDetector::DyskinesiaDetector()
-    : streak(0)
-{
+DyskinesiaDetector::DyskinesiaDetector(){
+    dyskinesiaStreak = 0;
 }
 
 float DyskinesiaDetector::bandPower(const FFTBuffer &fft, float fLow, float fHigh) const {
@@ -84,8 +83,8 @@ uint8_t DyskinesiaDetector::detectRaw(const FFTBuffer &fft) const {
 uint8_t DyskinesiaDetector::detect(const FFTBuffer &fft) {
     uint8_t raw = detectRaw(fft);
 
-    if (raw) streak++;
-    else streak = 0;
+    if (raw) dyskinesiaStreak++;
+    else dyskinesiaStreak = 0;
 
-    return (streak >= CONSECUTIVE_NEEDED) ? 1 : 0;
+    return (dyskinesiaStreak >= CONSECUTIVE_NEEDED) ? 1 : 0;
 }
