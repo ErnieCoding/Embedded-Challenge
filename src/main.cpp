@@ -109,7 +109,12 @@ int main() {
             if (dysk) {
                 printf(">>> DYSKINESIA DETECTED <<<\n");
             }
-            uint8_t fog = fogDetector.detect(acc_buffer.dominantHz, acc_buffer.dominantMag);// FOG Detection
+            uint8_t fog = fogDetector.detect(
+            acc_buffer.dominantHz,
+            acc_buffer.dominantMag,
+            gyro_buffer.dominantHz,
+            gyro_buffer.dominantMag
+            );
             bleManager.updateFOG(fog);
             if (fog) {
             printf(">>> FOG DETECTED <<<\n");
