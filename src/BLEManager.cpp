@@ -13,7 +13,8 @@ void BLEManager::init() {
     _ble.onEventsToProcess(scheduleBleEvents);
     _ble.init(this, &BLEManager::onInitComplete);
     static Thread bleThread;
-    bleThread.start(callback(&bleEventQueue, &events::EventQueue::dispatch_forever));
+    bleThread.start(callback(&bleEventQueue,
+                             &events::EventQueue::dispatch_forever));
 }
 
 void BLEManager::scheduleBleEvents(BLE::OnEventsToProcessCallbackContext *context) {
