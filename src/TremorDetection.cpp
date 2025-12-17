@@ -37,7 +37,6 @@ uint8_t TremorDetector::detectRaw(const FFTBuffer &fft) const {
 
     // 2) tremor ratio score
     float Pt = bandPower(fft, TREMOR_F_LO, TREMOR_F_HI);
-    float Pr = bandPower(fft, REF_F_LO, REF_F_HI);
 
     float score = Pt / (Pr + 1e-9f);
 
