@@ -16,9 +16,12 @@ void FFTBuffer::init(){
     initalized = true;
 }
 
-bool FFTBuffer::addSample(float value) {
+bool FFTBuffer::addSample(float x, float y, float z) {
     if (index >= RAW_SAMPLES) return false;
-    fftInput[index++] = value;
+    fftInputX[index] = x;
+    fftInputY[index] = y;
+    fftInputZ[index] = z;
+    index++;
     return true;
 }
 
@@ -27,8 +30,11 @@ bool FFTBuffer::isFull() const {
 }
 
 void FFTBuffer::reset() {
+    // Reset literally everything
     index = 0;
-    memset(fftInput, 0, sizeof(fftInput));
+    memset(fftInputX, 0, sizeof(fftInputX));
+    memset(fftInputY, 0, sizeof(fftInputX));
+    memset(fftInputZ, 0, sizeof(fftInputX));
     memset(fftOutput, 0, sizeof(fftOutput));
     memset(mag, 0, sizeof(mag));
 
@@ -37,21 +43,41 @@ void FFTBuffer::reset() {
 }
 
 void FFTBuffer::process() {
-    float mean = 0.0f;
-    for (int i = 0; i < RAW_SAMPLES; i++) mean += fftInput[i];
-    mean /= (float)RAW_SAMPLES;
+    memset(mag, 0, sizeof(mag));
 
-    for (int i = 0; i < RAW_SAMPLES; i++) {
-        fftInput[i] -= mean;
+    float* axisBuffers[3] = {fftInputX, fftInputY, fftInputZ};
+
+    for (int a = 0; a < 3; a++) {
+        float* currentInput = axisBuffers[a];
+
+        float mean = 0.0f;
+        for (int i = 0; i < RAW_SAMPLES; i++) mean += currentInput[i];
+        mean /= (float)RAW_SAMPLES;
+        for (int i = 0; i < RAW_SAMPLES; i++) currentInput[i] -= mean;
+
+        for (int i = 0; i < RAW_SAMPLES; i++) {
+            float hanning = 0.5f * (1.0f - cosf(2.0f * 3.14159f * i / (RAW_SAMPLES - 1)));
+            currentInput[i] *= hanning;
+        }
+
+        // Zero Padding the rest of the FFTBuffer
+        static float tempFFTInput[FFT_SIZE];
+        memcpy(tempFFTInput, currentInput, sizeof(float) * RAW_SAMPLES);
+        for(int i = RAW_SAMPLES; i < FFT_SIZE; i++) tempFFTInput[i] = 0.0f;
+
+        arm_rfft_fast_f32(&rfft, tempFFTInput, fftOutput, 0);
+
+        // Accumulate Magnitude
+        static float tempMag[FFT_SIZE / 2];
+        arm_cmplx_mag_f32(fftOutput, tempMag, FFT_SIZE / 2);
+        
+        // Sum this axis's magnitude into the global mag buffer
+        for (int i = 0; i < FFT_SIZE / 2; i++) {
+            mag[i] += tempMag[i];
+        }
     }
 
-    for (int i = RAW_SAMPLES; i < FFT_SIZE; i++) fftInput[i] = 0.0f; // zero-pad the rest of the samples [156:]
-
-    arm_rfft_fast_f32(&rfft, fftInput, fftOutput, 0);
-
     mag[0] = 0.0f;
-    arm_cmplx_mag_f32(&fftOutput[2], &mag[1], (FFT_SIZE/2 - 1));
-
     computeDominantInRange(0.5f, 12.0f);
 }
 

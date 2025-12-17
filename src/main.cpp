@@ -4,6 +4,7 @@
 #include "FOGDetector.h"
 #include "TremorDetector.h"
 #include "DyskinesiaDetection.h"
+#include "BLEManager.h"
 
 I2C i2c(PB_11, PB_10);
 DigitalOut led(LED2);
@@ -26,9 +27,10 @@ int main() {
     bleManager.init();
     ThisThread::sleep_for(5000ms); // 5 sec delay to open serial monitor
     
+    /* Stack size printing for debugging */
     printf("Main thread stack size: %lu bytes\n", osThreadGetStackSize(osThreadGetId()));
 
-    // Set I2C to 400kHz
+    // Set I2C (400 KHz)
     i2c.frequency(400000);
     
     if (!sensors.init()) {
@@ -52,7 +54,7 @@ int main() {
     Timer blinkTimer;
     blinkTimer.start();
     
-    // float blinkInterval = 0.5f;
+    float blinkInterval = 0.5f;
     uint32_t sampleCount = 0;
     
     while (true) {
@@ -60,27 +62,24 @@ int main() {
         sensors.readAccel(ax, ay, az);
         sensors.readGyro(gx, gy, gz);
         
-        // float intensity = sensors.computeMotionIntensity(ax, ay, az, gx, gy, gz);
+        float intensity = sensors.computeMotionIntensity(ax, ay, az, gx, gy, gz);
         
-        // if (intensity < 0.5f) { // threshold for no motion
-        //     led = 0;
-        //     blinkTimer.reset();
-        // } else {
-        //     float clamped = intensity;
-        //     if (clamped > 5.0f) clamped = 5.0f; // max blink rate
-        //     blinkInterval = 0.5f / clamped;
+        if (intensity < 0.5f) { // threshold for no motion
+            led = 0;
+            blinkTimer.reset();
+        } else {
+            float clamped = intensity;
+            if (clamped > 10.0f) clamped = 10.0f; // max blink rate
+            blinkInterval = 0.5f / clamped;
 
-        //     if (blinkTimer.elapsed_time().count() / 1e6f > blinkInterval) {
-        //         led = !led;
-        //         blinkTimer.reset();
-        //     }
-        // }
+            if (blinkTimer.elapsed_time().count() / 1e6f > blinkInterval) {
+                led = !led;
+                blinkTimer.reset();
+            }
+        }
 
-        float acc_mag  = sqrtf(ax*ax + ay*ay + az*az);
-        float gyro_mag = sqrtf(gx*gx + gy*gy + gz*gz);
-
-        acc_buffer.addSample(acc_mag);
-        gyro_buffer.addSample(gyro_mag);
+        acc_buffer.addSample(ax, ay, az);
+        gyro_buffer.addSample(gx, gy, gz);
 
         if (acc_buffer.isFull() && gyro_buffer.isFull()){
             // Processing accelerometer data
@@ -88,7 +87,16 @@ int main() {
             // Processing gyroscope data
             gyro_buffer.process();
 
-            printf("ACC: dom %.2f Hz mag %.2f | GYRO: dom %.2f Hz mag %.2f\n", acc_buffer.dominantHz, acc_buffer.dominantMag, gyro_buffer.dominantHz, gyro_buffer.dominantMag);
+            // Printing RAW + Processed data for debugging
+            printf("\n========================\n");
+
+            printf("\nACC RAW: X -> [%.2f] Y -> [%.2F] Z -> [%.2F]\n", ax, ay, az); // raw accelerometer (x, y, z)
+            printf("\nGYRO RAW: X -> [%.2f] Y -> [%.2F] Z -> [%.2F]\n", gx, gy, gz); // raw gyro (x, y, z)
+
+            printf("\nACC: dom %.2f Hz mag %.2f | GYRO: dom %.2f Hz mag %.2f\n", acc_buffer.dominantHz, acc_buffer.dominantMag, gyro_buffer.dominantHz, gyro_buffer.dominantMag); // processed data from the FFT buffer (dominant frequency + magnitude)
+
+            printf("\n========================\n");
+            
             // --- Tremor detection (use gyro FFT) ---
             uint8_t tremor = tremorDetector.detect(gyro_buffer); // 0 or 1
             bleManager.updateTremor(tremor);
@@ -106,6 +114,7 @@ int main() {
             if (fog) {
             printf(">>> FOG DETECTED <<<\n");
             }
+
             acc_buffer.reset();
             gyro_buffer.reset();
         }
