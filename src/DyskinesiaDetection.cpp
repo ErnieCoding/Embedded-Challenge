@@ -64,13 +64,17 @@ float DyskinesiaDetector::spectralEntropy(const FFTBuffer &fft, float fLow, floa
 
 
 uint8_t DyskinesiaDetector::detectRaw(const FFTBuffer &fft) const {
-    // total energy in reference band
-    float total = bandPower(fft, REF_F_LO, REF_F_HI);
-    if (total < TOTAL_POWER_MIN) return 0;
+    // Ignore cases where dominant motion is below REF_F_LO (likely gravity / very slow drift)
+    if (fft.dominantHz < REF_F_LO) return 0;
+
+    // Compute motion energy excluding very-low-frequency components (gravity)
+    float motion = bandPower(fft, REF_F_LO, REF_F_HI);
+    if (motion < TOTAL_POWER_MIN) return 0;
 
     float mid = bandPower(fft, MID_F_LO, MID_F_HI);
-    float ratio = mid / (total + 1e-9f);
+    float ratio = mid / (motion + 1e-9f);
 
+    // Compute entropy over motion band (ignoring gravity)
     float ent = spectralEntropy(fft, REF_F_LO, REF_F_HI);
 
     // dyskinesia tends to be irregular/broadband -> higher entropy
