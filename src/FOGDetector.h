@@ -1,23 +1,47 @@
 #pragma once
 #include <stdint.h>
+#include <cstring>
+#include <arm_math.h>
+#include <cmath>
 
-class FOGDetector {
+class FFTBuffer {
 public:
-    FOGDetector();
+    static constexpr float SAMPLE_RATE = 52.0f; // Sensor ODR
+    static constexpr int RAW_SAMPLES = 156;  // 156 samples in total in a 3 second interval
+    static constexpr int FFT_SIZE = 256;
+    static constexpr float BIN_HZ = SAMPLE_RATE / (float)FFT_SIZE;
 
+    FFTBuffer();
 
-    uint8_t detect(float dominantHz, float dominantMag);
+    void init();
+    
+    bool addSample(float x, float y, float z);
+    bool isFull() const;
+    void reset();
+    void process();
+
+    float mag[FFT_SIZE/2]; // Nyquist sampling
+    float dominantHz;
+    float dominantMag;
+
+    static int hzToBin(float hz) { return (int)(hz / BIN_HZ + 0.5f); }
 
 private:
-    bool prevWalking;
+    int index;
+    bool initalized = false;
+
+    // Input buffers for each of the 3 axis (x, y, z)
+    float fftInputX[RAW_SAMPLES];
+    float fftInputY[RAW_SAMPLES];
+    float fftInputZ[RAW_SAMPLES];
+
+    // Output buffer for the FFT readings
+    float fftOutput[FFT_SIZE];
+
+    arm_rfft_fast_instance_f32 rfft;
 
 
-    bool isWalking(float hz, float mag) const;
-
-    static constexpr float WALK_F_LO = 1.0f;
-    static constexpr float WALK_F_HI = 2.2f;  
-    static constexpr float WALK_MAG_THRESHOLD = 0.8f;
-    static constexpr float FREEZE_MAG_THRESHOLD = 0.3f;
+    void computeDominantInRange(float fLow, float fHigh);
 };
 
 
