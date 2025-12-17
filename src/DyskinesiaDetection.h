@@ -20,7 +20,9 @@ private:
     static constexpr float REF_F_HI = 20.0f;
 
     // Heuristic thresholds (tunable)
-    static constexpr float TOTAL_POWER_MIN = 1e-3f; // minimum motion energy to consider
+    // Increase minimum motion energy so entropy isn't computed on stationary noise.
+    // Use a value in the 50..500 range; defaulting to 100.0f.
+    static constexpr float TOTAL_POWER_MIN = 100.0f; // minimum motion energy to consider
     static constexpr float RATIO_THRESHOLD = 0.12f; // mid-band power ratio
     static constexpr float ENTROPY_THRESHOLD = 0.60f; // spectral entropy (0..1)
     static constexpr int CONSECUTIVE_NEEDED = 3; // debounce
