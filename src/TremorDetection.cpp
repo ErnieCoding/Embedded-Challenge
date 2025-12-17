@@ -26,6 +26,11 @@ float TremorDetector::bandPower(const FFTBuffer &fft, float fLow, float fHigh) c
 }
 
 uint8_t TremorDetector::detectRaw(const FFTBuffer &fft) const {
+    //if overall spectrum is too small, treat as "no motion" => no tremor
+    float Pr = bandPower(fft, REF_F_LO, REF_F_HI);
+    if (Pr < REF_POWER_MIN) return 0;
+    // Gate 1: dominant peak magnitude must be above a floor
+    if (fft.dominantMag < DOM_MAG_MIN) return 0;
     // 1) strongest peak must be in tremor band
     bool peakInBand = (fft.dominantHz >= TREMOR_F_LO && fft.dominantHz <= TREMOR_F_HI);
     if (!peakInBand) return 0;
