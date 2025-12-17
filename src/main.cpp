@@ -101,12 +101,14 @@ int main() {
             uint8_t tremor = tremorDetector.detect(gyro_buffer); // 0 or 1
             bleManager.updateTremor(tremor);
             if (tremor) {
+                bleManager.updateTremorText("TREMOR DETECTED");
                 printf(">>> TREMOR DETECTED <<<\n");
             }
             // --- Dyskinesia detection (use accel FFT) ---
             uint8_t dysk = dyskinesiaDetector.detect(acc_buffer);
             bleManager.updateDyskinesia(dysk);
             if (dysk) {
+                bleManager.updateDyskinesiaText("DYSKINESIA DETECTED");
                 printf(">>> DYSKINESIA DETECTED <<<\n");
             }
             uint8_t fog = fogDetector.detect(
@@ -116,6 +118,10 @@ int main() {
             gyro_buffer.dominantMag
             );
             bleManager.updateFOG(fog);
+            if (fog) {
+            bleManager.updateFOGText("FOG DETECTED");
+            } 
+            // FOG Detection
             if (fog) {
             printf(">>> FOG DETECTED <<<\n");
             }
