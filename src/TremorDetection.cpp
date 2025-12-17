@@ -44,9 +44,9 @@ uint8_t TremorDetector::detectRaw(const FFTBuffer &fft) const {
 
     if (score < SCORE_THRESHOLD) return 0;
 
-    float Pother = Pr - Pt;
-    float dominance = Pt / (Pother + 1e-9f);
-    if (dominance < DOMINANCE_THRESHOLD) return 0;
+    // float Pother = Pr - Pt;
+    // float dominance = Pt / (Pother + 1e-9f);
+    // if (dominance < DOMINANCE_THRESHOLD) return 0;
 
     return 1;
 }

@@ -4,28 +4,35 @@
 
 class DyskinesiaDetector {
 public:
-    int dyskinesiaStreak;
+    int detectionCount; 
+    
     DyskinesiaDetector();
 
-    // stable decision (debounced)
+    // Returns 1 if 80% (16/20) of the last minute contained Dyskinesia
     uint8_t detect(const FFTBuffer &fft);
+    
+    // Returns 1 if the CURRENT 3-second window looks like Dyskinesia
     uint8_t detectRaw(const FFTBuffer &fft) const;
 
 private:
-    // Frequency bands (Hz)
-    static constexpr float MID_F_LO = 4.0f;  // dyskinesia often shows energy above tremor band
-    static constexpr float MID_F_HI = 12.0f;
+    static constexpr float DYSK_F_LO = 5.0f; 
+    static constexpr float DYSK_F_HI = 7.0f; 
+    
     static constexpr float REF_F_LO = 0.5f;
-    static constexpr float REF_F_HI = 20.0f;
+    static constexpr float REF_F_HI = 15.0f;
 
-    // Heuristic thresholds (tunable)
-    // Increase minimum motion energy so entropy isn't computed on stationary noise.
-    // Use a value in the 50..500 range; defaulting to 100.0f.
-    static constexpr float TOTAL_POWER_MIN = 100.0f; // minimum motion energy to consider
-    static constexpr float RATIO_THRESHOLD = 0.12f; // mid-band power ratio
-    static constexpr float ENTROPY_THRESHOLD = 0.60f; // spectral entropy (0..1)
-    static constexpr int CONSECUTIVE_NEEDED = 3; // debounce
+    // Thresholds
+    static constexpr float TOTAL_POWER_MIN = 100.0f; 
+    static constexpr float RATIO_THRESHOLD = 0.25f; 
+    static constexpr float MIN_DOM_MAG = 10.0f;   
+
+    // Rolling Window Settings
+    static constexpr int HISTORY_SIZE = 20;   
+    static constexpr int REQUIRED_COUNT = 16;
 
     float bandPower(const FFTBuffer &fft, float fLow, float fHigh) const;
-    float spectralEntropy(const FFTBuffer &fft, float fLow, float fHigh) const;
+    
+    // Circular Buffer
+    uint8_t history[HISTORY_SIZE];
+    int historyIndex;
 };

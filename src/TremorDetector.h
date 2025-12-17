@@ -12,12 +12,15 @@ class TremorDetector {
     private:
         static constexpr float TREMOR_F_LO = 3.0f;
         static constexpr float TREMOR_F_HI = 5.0f;
+
         static constexpr float REF_F_LO = 0.5f;
         static constexpr float REF_F_HI = 10.0f;
-        static constexpr float SCORE_THRESHOLD = 0.20f;
-        static constexpr int CONSECUTIVE_NEEDED = 2;
+
+        static constexpr float SCORE_THRESHOLD = 0.4f;
+        static constexpr int CONSECUTIVE_NEEDED = 20;
+        
         static constexpr float REF_POWER_MIN = 20.0f;
-        static constexpr float DOM_MAG_MIN   = 3.0f;
+        static constexpr float DOM_MAG_MIN   = 2.0f;
         static constexpr float DOMINANCE_THRESHOLD = 0.6f;
         static constexpr float TREMOR_POWER_MIN = 30.0f; 
         float bandPower(const FFTBuffer &fft, float fLow, float fHigh) const;

@@ -96,28 +96,42 @@ int main() {
             printf("\nACC: dom %.2f Hz mag %.2f | GYRO: dom %.2f Hz mag %.2f\n", acc_buffer.dominantHz, acc_buffer.dominantMag, gyro_buffer.dominantHz, gyro_buffer.dominantMag); // processed data from the FFT buffer (dominant frequency + magnitude)
 
             printf("\n========================\n");
+
+            uint8_t dyskRaw = dyskinesiaDetector.detectRaw(acc_buffer);
+            uint8_t tremRaw = tremorDetector.detectRaw(gyro_buffer);
             
-            // --- Tremor detection (use gyro FFT) ---
-            uint8_t tremor = tremorDetector.detect(gyro_buffer); // 0 or 1
-            bleManager.updateTremor(tremor);
-            if (tremor) {
-                printf(">>> TREMOR DETECTED <<<\n");
-            }
-            // --- Dyskinesia detection (use accel FFT) ---
-            uint8_t dysk = dyskinesiaDetector.detect(acc_buffer);
-            bleManager.updateDyskinesia(dysk);
-            if (dysk) {
-                printf(">>> DYSKINESIA DETECTED <<<\n");
-            }
+            uint8_t dyskConfirmed = dyskinesiaDetector.detect(acc_buffer);
+            uint8_t tremConfirmed = tremorDetector.detect(gyro_buffer);
+
             uint8_t fog = fogDetector.detect(
             acc_buffer.dominantHz,
             acc_buffer.dominantMag,
             gyro_buffer.dominantHz,
             gyro_buffer.dominantMag
             );
-            bleManager.updateFOG(fog);
+            
+            printf("STATUS: DyskRaw: %d (Streak %d/20) | TremRaw: %d (Streak %d/20) | FOG: %d\n", 
+                   dyskRaw, dyskinesiaDetector.detectionCount,
+                   tremRaw, tremorDetector.tremorStreak,
+                   fog);
+
+            // --- BROADCAST LOGIC ---
+            // Priority: FOG > Tremor > Dyskinesia
             if (fog) {
-            printf(">>> FOG DETECTED <<<\n");
+                printf(">>> FOG BROADCAST <<<\n");
+                bleManager.updateStatus("FOG:DETECTED");
+            }
+            else if (tremConfirmed) {
+                printf(">>> TREMOR BROADCAST <<<\n");
+                bleManager.updateStatus("TREM:DETECTED");
+            }
+            else if (dyskConfirmed) {
+                printf(">>> DYSKINESIA BROADCAST <<<\n");
+                bleManager.updateStatus("DYSK:DETECTED");
+            }
+            else {
+                // Nothing confirmed for >1 min, do nothing
+                bleManager.updateStatus("NORMAL");
             }
 
             acc_buffer.reset();

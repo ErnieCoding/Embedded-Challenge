@@ -1,8 +1,12 @@
 #include "DyskinesiaDetection.h"
 #include <cmath>
+#include <cstring>
+#include <cstdio> // For printf
 
 DyskinesiaDetector::DyskinesiaDetector(){
-    dyskinesiaStreak = 0;
+    detectionCount = 0;
+    historyIndex = 0;
+    memset(history, 0, sizeof(history));
 }
 
 float DyskinesiaDetector::bandPower(const FFTBuffer &fft, float fLow, float fHigh) const {
@@ -12,7 +16,6 @@ float DyskinesiaDetector::bandPower(const FFTBuffer &fft, float fLow, float fHig
     if (b0 < 1) b0 = 1;
     int maxBin = (FFTBuffer::FFT_SIZE / 2 - 1);
     if (b1 > maxBin) b1 = maxBin;
-
     if (b1 < b0) return 0.0f;
 
     float sum = 0.0f;
@@ -23,68 +26,47 @@ float DyskinesiaDetector::bandPower(const FFTBuffer &fft, float fLow, float fHig
     return sum;
 }
 
-
-float DyskinesiaDetector::spectralEntropy(const FFTBuffer &fft, float fLow, float fHigh) const {
-    int b0 = FFTBuffer::hzToBin(fLow);
-    int b1 = FFTBuffer::hzToBin(fHigh);
-
-    if (b0 < 1) b0 = 1;
-    int maxBin = (FFTBuffer::FFT_SIZE / 2 - 1);
-    if (b1 > maxBin) b1 = maxBin;
-    if (b1 < b0) return 0.0f;
-
-    // Build PSD over the band
-    int N = (b1 - b0 + 1);
-    float S = 0.0f;
-    // temporary buffer small enough for stack
-    float psd[128];
-    for (int b = b0, i = 0; b <= b1; b++, i++) {
-        float v = fft.mag[b];
-        float p = v * v;
-        psd[i] = p;
-        S += p;
-    }
-
-    if (S <= 1e-12f) return 0.0f;
-
-    // compute entropy (base-2) and normalize by log2(N)
-    float entropy = 0.0f;
-    for (int i = 0; i < N; i++) {
-        float p = psd[i] / S;
-        if (p > 0.0f) {
-            entropy -= p * (logf(p) / logf(2.0f));
-        }
-    }
-
-    float norm = logf((float)N) / logf(2.0f);
-    if (norm <= 0.0f) return 0.0f;
-    return entropy / norm; // 0..1
-}
-
-
 uint8_t DyskinesiaDetector::detectRaw(const FFTBuffer &fft) const {
-    // total energy in reference band
     float total = bandPower(fft, REF_F_LO, REF_F_HI);
+    float powerInBand = bandPower(fft, DYSK_F_LO, DYSK_F_HI);
+    float ratio = powerInBand / (total + 1e-9f);
+
+    // --- DEBUGGING OUTPUT ---
+    if (fft.dominantMag > 10.0f) {
+        printf("[DYSK CHECK] Hz: %.2f | Mag: %.2f | Ratio: %.2f ", fft.dominantHz, fft.dominantMag, ratio);
+        
+        if (fft.dominantHz < DYSK_F_LO) printf("-> FAIL: Too Slow (<%.1f)\n", DYSK_F_LO);
+        else if (fft.dominantHz > DYSK_F_HI) printf("-> FAIL: Too Fast (>%.1f)\n", DYSK_F_HI);
+        else if (total < TOTAL_POWER_MIN) printf("-> FAIL: Too Weak (Power)\n");
+        else if (ratio < RATIO_THRESHOLD) printf("-> FAIL: Ratio Low (<%.2f)\n", RATIO_THRESHOLD);
+        else printf("-> PASS!\n");
+    }
+
     if (total < TOTAL_POWER_MIN) return 0;
+    if (fft.dominantMag < MIN_DOM_MAG) return 0;
 
-    float mid = bandPower(fft, MID_F_LO, MID_F_HI);
-    float ratio = mid / (total + 1e-9f);
+    bool freqMatch = (fft.dominantHz >= DYSK_F_LO && fft.dominantHz <= DYSK_F_HI);
+    if (!freqMatch) return 0;
 
-    float ent = spectralEntropy(fft, REF_F_LO, REF_F_HI);
+    if (ratio < RATIO_THRESHOLD) return 0;
 
-    // dyskinesia tends to be irregular/broadband -> higher entropy
-    bool entropyOk = (ent >= ENTROPY_THRESHOLD);
-    bool ratioOk = (ratio >= RATIO_THRESHOLD);
-
-    return (entropyOk && ratioOk) ? 1 : 0;
+    return 1;
 }
-
 
 uint8_t DyskinesiaDetector::detect(const FFTBuffer &fft) {
+    // Get result for this 3-second window
     uint8_t raw = detectRaw(fft);
+    
+    // Add to Circular Buffer
+    history[historyIndex] = raw;
+    historyIndex = (historyIndex + 1) % HISTORY_SIZE;
 
-    if (raw) dyskinesiaStreak++;
-    else dyskinesiaStreak = 0;
+    // Count total positives in the buffer
+    detectionCount = 0;
+    for (int i = 0; i < HISTORY_SIZE; i++) {
+        detectionCount += history[i];
+    }
 
-    return (dyskinesiaStreak >= CONSECUTIVE_NEEDED) ? 1 : 0;
+    // Return 1 if >= 80% (16/20) are positive
+    return (detectionCount >= REQUIRED_COUNT) ? 1 : 0;
 }
